@@ -1,0 +1,992 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F3F5F8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Gym Log">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>Gym Log</title>
+<style>
+:root{
+  --bg:#F3F5F8;--card:#FFFFFF;--card2:#F1F4F8;--line:#E3E7ED;
+  --text:#142033;--muted:#6B7689;--accent:#2563EB;--accent-ink:#FFFFFF;
+  --accent-soft:rgba(37,99,235,.08);--ok:#2563EB;--ok-soft:rgba(37,99,235,.07);--danger:#D93844;
+  --radius:16px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+body{padding-bottom:calc(80px + env(safe-area-inset-bottom))}
+body.resting{padding-bottom:calc(160px + env(safe-area-inset-bottom))}
+main{max-width:640px;margin:0 auto;padding:calc(12px + env(safe-area-inset-top)) 16px 24px}
+h1{font-size:28px;margin:10px 0 16px;letter-spacing:-.01em}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:32px 4px 10px;font-weight:600}
+h3{margin:0;font-size:20px}
+p{margin:0 0 10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:12px}
+.row{display:flex;align-items:center;gap:10px}
+.grow{flex:1;min-width:0}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.title{font-weight:600;font-size:17px}
+.note{background:var(--card2);border-radius:8px;padding:6px 10px;font-size:13px;color:var(--muted);margin:8px 0}
+.empty{text-align:center;padding:24px 16px}
+.empty button{margin-top:12px}
+.steps{margin:0;padding-left:20px;color:var(--muted);font-size:14px}
+.steps li{margin:4px 0}
+.steps li.ok{color:var(--ok)}
+
+button{font:inherit;color:inherit;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:10px 14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+button:active{opacity:.75}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+button.danger{background:transparent;border-color:transparent;color:var(--danger)}
+button.ghost{background:transparent;border-color:transparent;color:var(--accent);padding:8px 4px}
+button.block{display:flex;width:100%;padding:14px;margin-top:12px}
+button.icon{padding:8px;background:transparent;border-color:transparent;color:var(--muted);line-height:1}
+input,select,textarea{font:inherit;font-size:16px;color:var(--text);background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;width:100%}
+textarea{min-height:70px;resize:vertical}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);border-color:transparent}
+input::placeholder{color:#A6AEBB}
+label{display:block;font-size:13px;color:var(--muted);margin:12px 0 6px}
+
+/* lijst */
+.list{padding:0;overflow:hidden}
+.li{display:flex;align-items:center;gap:10px;padding:15px 16px;border-top:1px solid var(--line);cursor:pointer}
+.li:first-child{border-top:0}
+.li .chev{color:var(--muted)}
+
+/* sets tijdens training */
+.set{display:grid;grid-template-columns:30px 1fr 1fr 46px;gap:8px;align-items:center;margin-top:8px}
+.set.head{font-size:12px;color:var(--muted);margin-top:12px;text-align:center}
+.set .nr{text-align:center;color:var(--muted);font-weight:600}
+.set input{text-align:center;padding:11px 4px}
+.check{width:46px;height:44px;padding:0;color:#B4BCC8}
+.set.done input{border-color:var(--ok);background:var(--ok-soft)}
+.set.done .check{background:var(--ok);border-color:var(--ok);color:#fff}
+
+/* tegels */
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tiles.two{grid-template-columns:repeat(2,1fr)}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px}
+.tile .v{font-size:24px;font-weight:700}
+.tile .l{font-size:12px;color:var(--muted)}
+.bar{display:grid;grid-template-columns:90px 1fr 28px;gap:8px;align-items:center;font-size:14px;margin:6px 0}
+.bar .track{background:var(--card2);border-radius:6px;height:10px;overflow:hidden}
+.bar .fill{background:var(--accent);height:100%;border-radius:6px}
+.bar .n{text-align:right;color:var(--muted)}
+.seg{display:flex;background:var(--card2);border-radius:10px;padding:3px;margin:12px 0 8px}
+.seg button{flex:1;background:transparent;border:0;padding:8px 4px;font-size:14px;color:var(--muted)}
+.seg button.on{background:var(--card);box-shadow:0 1px 3px rgba(20,32,51,.1);color:var(--text);font-weight:600}
+svg.chart{width:100%;height:auto;display:block}
+svg.ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.li .chev svg{width:18px;height:18px;display:block}
+
+/* navigatie */
+nav.tabs{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid var(--line);display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom);z-index:10}
+nav.tabs .in{display:flex;width:100%;max-width:640px}
+nav.tabs button{flex:1;background:none;border:0;border-radius:0;padding:8px 0 9px;color:var(--muted);font-size:11px;display:flex;flex-direction:column;align-items:center;gap:3px;position:relative}
+nav.tabs button.on{color:var(--accent)}
+nav.tabs svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+nav.tabs .dot{position:absolute;top:6px;left:calc(50% + 10px);width:8px;height:8px;border-radius:50%;background:var(--ok)}
+
+/* rusttimer */
+#rest{position:fixed;left:0;right:0;bottom:calc(62px + env(safe-area-inset-bottom));display:flex;justify-content:center;padding:0 16px;z-index:9}
+#rest[hidden]{display:none}
+#rest .box{width:100%;max-width:608px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 12px;position:relative;overflow:hidden;box-shadow:0 8px 28px rgba(20,32,51,.12)}
+#rest .prog{position:absolute;left:0;bottom:0;height:3px;background:var(--accent)}
+#rest .t{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+#rest button{padding:8px 12px;font-size:14px;background:var(--card)}
+
+/* modal */
+#modal{position:fixed;inset:0;background:rgba(20,32,51,.32);display:none;align-items:flex-end;justify-content:center;z-index:20}
+#modal.open,#confirm.open{display:flex}
+#confirm{position:fixed;inset:0;background:rgba(20,32,51,.32);display:none;align-items:flex-end;justify-content:center;z-index:25}
+button.dangerbg{background:var(--danger);color:#fff}
+.sheet{background:var(--card);width:100%;max-width:640px;max-height:90vh;overflow:auto;border-radius:18px 18px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
+@media (min-width:700px){#modal,#confirm{align-items:center}.sheet{border-radius:18px}}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:4px 0 8px;margin:0 -16px;padding-left:16px;padding-right:16px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{white-space:nowrap;padding:7px 13px;border-radius:999px;font-size:14px;flex:none}
+.chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.demo-btn{padding:6px 10px;font-size:13px;color:var(--accent);border-color:var(--line);gap:4px;flex:none}
+.demo-btn svg.ic{width:14px;height:14px}
+.li .demo-btn{padding:6px 8px}
+.demo-img{position:relative;margin-top:12px;border-radius:14px;overflow:hidden;background:var(--card2);aspect-ratio:4/3}
+.demo-img img{width:100%;height:100%;object-fit:cover;display:block}
+.demo-img .dots{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:6px}
+.demo-img .dots span{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.7);box-shadow:0 0 0 1px rgba(20,32,51,.15)}
+.demo-img .dots span.on{background:var(--accent)}
+.demo-img .off{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px;color:var(--muted);font-size:14px}
+.mchip{display:inline-block;font-size:13px;padding:5px 11px;border-radius:999px;background:var(--accent-soft);color:var(--accent);margin:12px 6px 0 0}
+.mchip.sec{background:var(--card2);color:var(--muted)}
+ol.demo-steps{list-style:none;padding:0;margin:14px 0 0;counter-reset:st}
+ol.demo-steps li{counter-increment:st;display:flex;gap:12px;margin:12px 0;line-height:1.45}
+ol.demo-steps li::before{content:counter(st);flex:none;width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;font-size:13px;font-weight:600;display:grid;place-items:center}
+.pick{display:flex;align-items:center;gap:12px;padding:12px 4px;border-top:1px solid var(--line);cursor:pointer}
+.pick .box{width:24px;height:24px;border-radius:7px;border:2px solid var(--line);display:grid;place-items:center;font-size:14px;flex:none}
+.pick .box svg{width:16px;height:16px}
+.pick.on .box{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.pick.has{opacity:.45}
+
+#toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top));transform:translateX(-50%) translateY(-20px);background:var(--text);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;font-weight:600;opacity:0;transition:.25s;z-index:30;pointer-events:none;max-width:90vw;text-align:center}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<main id="main"></main>
+
+<div id="rest" hidden>
+  <div class="box">
+    <div class="row">
+      <div class="grow"><div class="small muted">Rust</div><div class="t">0:00</div></div>
+      <button data-act="restAdd">+15 s</button>
+      <button data-act="restStop">Stop</button>
+    </div>
+    <div class="prog"></div>
+  </div>
+</div>
+
+<nav class="tabs"><div class="in">
+  <button data-act="go" data-v="train"><svg viewBox="0 0 24 24"><rect x="5" y="6" width="3" height="12" rx="1"/><rect x="16" y="6" width="3" height="12" rx="1"/><path d="M2.5 9.5v5M21.5 9.5v5M8 12h8"/></svg>Start</button>
+  <button data-act="go" data-v="workouts"><svg viewBox="0 0 24 24"><rect x="8" y="2.5" width="8" height="4" rx="1"/><path d="M16 4.5h2a2 2 0 0 1 2 2V20a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6.5a2 2 0 0 1 2-2h2M12 11h4M12 16h4M8 11h.01M8 16h.01"/></svg>Trainingen</button>
+  <button data-act="go" data-v="exercises"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></svg>Oefeningen</button>
+  <button data-act="go" data-v="progress"><svg viewBox="0 0 24 24"><path d="M22 7l-8.5 8.5-5-5L2 17M16 7h6v6"/></svg>Progressie</button>
+  <button data-act="go" data-v="more"><svg viewBox="0 0 24 24"><path d="M20 7h-9M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>Meer</button>
+</div></nav>
+
+<div id="modal"></div>
+<div id="confirm"></div>
+<div id="toast"></div>
+<input type="file" id="importFile" accept="application/json,.json" hidden>
+
+<script>
+'use strict';
+const KEY = 'gymlog_v2';
+// standaard oefeningen per spiergroep; [naam, notitie] voor oefeningen met een notitie
+const LIBRARY = {
+  Borst: ['Bankdrukken (stang)', 'Bankdrukken (dumbbells)', 'Schuin bankdrukken (stang)', 'Schuin bankdrukken (dumbbells)', 'Chest press machine',
+    'Dumbbell flyes', 'Cable flyes', 'Pec deck', 'Dips (borst)', 'Push-ups'],
+  Rug: ['Deadlift', 'Lat pulldown', 'Pull-ups', 'Barbell row', 'Dumbbell row', 'Seated cable row', 'T-bar row', 'Machine row',
+    'Straight-arm pulldown', 'Back extension'],
+  Schouders: ['Overhead press (stang)', 'Dumbbell shoulder press', 'Shoulder press machine', 'Lateral raises', 'Cable lateral raises',
+    'Front raises', 'Reverse flyes', 'Face pulls', 'Upright row', 'Shrugs'],
+  Biceps: ['Barbell curl', 'Dumbbell curl', 'Hammer curl', 'Preacher curl', 'Cable curl', 'Incline dumbbell curl', 'Concentration curl', 'Chin-ups'],
+  Triceps: ['Triceps pushdown (kabel)', 'Overhead triceps extension', 'Skull crushers', 'Close-grip bankdrukken', 'Dips (triceps)', 'Triceps kickbacks'],
+  Benen: ['Squat', 'Front squat', 'Goblet squat', 'Leg press', 'Hack squat', 'Lunges', 'Bulgarian split squat', 'Leg extension',
+    'Leg curl (liggend)', 'Leg curl (zittend)', 'Roemeense deadlift', 'Adductor machine'],
+  Billen: ['Hip thrust', 'Glute bridge', 'Cable kickbacks', 'Abductor machine', 'Step-ups', 'Sumo deadlift'],
+  Kuiten: ['Calf raises (staand)', 'Calf raises (zittend)', 'Calf raises (leg press)'],
+  Core: [['Plank', 'Vul bij herhalingen het aantal seconden in'], ['Side plank', 'Vul bij herhalingen het aantal seconden in'], 'Crunches', 'Cable crunch', 'Hanging leg raises', 'Russian twists', 'Ab wheel', 'Pallof press'],
+};
+// voorbeeld per standaardoefening: [map in free-exercise-db, hoofdspieren, ook betrokken, stappen]
+// foto's: github.com/yuhonas/free-exercise-db (Unlicense, vrij te gebruiken), vastgezet op één versie
+const DEMO_IMG = 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/';
+const DEMOS = {
+  "Bankdrukken (stang)": ["Barbell_Bench_Press_-_Medium_Grip", "borst", "schouders, triceps", ["Ga plat op de bank liggen, voeten stevig op de grond. Pak de stang iets breder dan je schouders.", "Til de stang uit het rek en houd hem met gestrekte armen boven je borst.", "Laat hem rustig zakken tot hij je middenborst raakt. Adem in.", "Druk hem krachtig terug omhoog. Adem uit."]],
+  "Bankdrukken (dumbbells)": ["Dumbbell_Bench_Press", "borst", "schouders, triceps", ["Ga op de bank liggen met een dumbbell in elke hand, ter hoogte van je borst.", "Druk de dumbbells omhoog tot je armen bijna gestrekt zijn. Adem uit.", "Laat ze gecontroleerd zakken tot naast je borst, ellebogen iets onder schouderhoogte. Adem in."]],
+  "Schuin bankdrukken (stang)": ["Barbell_Incline_Bench_Press_-_Medium_Grip", "borst", "schouders, triceps", ["Zet de bank schuin (30 tot 45 graden) en ga liggen. Pak de stang iets breder dan je schouders.", "Til de stang uit het rek en houd hem boven je bovenborst.", "Laat hem rustig zakken tot net onder je sleutelbeen. Adem in.", "Druk hem terug omhoog. Adem uit."]],
+  "Schuin bankdrukken (dumbbells)": ["Incline_Dumbbell_Press", "borst", "schouders, triceps", ["Zet de bank schuin (30 tot 45 graden) en ga zitten met de dumbbells op je knieën.", "Ga liggen en breng de dumbbells naar schouderhoogte.", "Druk ze omhoog tot boven je bovenborst. Adem uit.", "Laat ze rustig terug zakken. Adem in."]],
+  "Chest press machine": ["Leverage_Chest_Press", "borst", "schouders, triceps", ["Stel de stoel zo in dat de handgrepen op borsthoogte zitten.", "Pak de grepen en houd je rug tegen het kussen.", "Duw de grepen naar voren tot je armen bijna gestrekt zijn. Adem uit.", "Laat ze langzaam terugkomen tot je een rek voelt in je borst. Adem in."]],
+  "Dumbbell flyes": ["Dumbbell_Flyes", "borst", "", ["Ga plat op de bank liggen met de dumbbells boven je borst, handpalmen naar elkaar.", "Houd een lichte buiging in je ellebogen en laat je armen in een boog naar opzij zakken. Adem in.", "Ga zo ver tot je een rek voelt in je borst.", "Breng ze in dezelfde boog terug naar boven, alsof je een boom omarmt. Adem uit."]],
+  "Cable flyes": ["Cable_Crossover", "borst", "schouders", ["Zet beide kabels hoog en pak in elke hand een handgreep.", "Stap een pas naar voren en buig iets voorover vanuit je heupen.", "Breng je handen in een boog naar elkaar toe voor je lichaam, ellebogen licht gebogen. Adem uit.", "Laat je armen rustig terug naar opzij gaan tot je een rek voelt. Adem in."]],
+  "Pec deck": ["Butterfly", "borst", "", ["Stel de stoel zo in dat de grepen op borsthoogte zitten.", "Pak de grepen en houd je rug tegen het kussen.", "Breng de grepen voor je borst naar elkaar toe en knijp je borst aan. Adem uit.", "Laat ze langzaam terug naar opzij gaan. Adem in."]],
+  "Dips (borst)": ["Dips_-_Chest_Version", "borst", "schouders, triceps", ["Steun met gestrekte armen op de dipbrug.", "Buig je iets voorover en laat je ellebogen iets naar buiten wijzen.", "Zak rustig tot je een rek voelt in je borst. Adem in.", "Duw jezelf terug omhoog. Adem uit."]],
+  "Push-ups": ["Pushups", "borst", "schouders, triceps", ["Ga in de opdrukhouding liggen, handen iets breder dan je schouders.", "Houd je lichaam recht als een plank, buik aangespannen.", "Zak tot je borst bijna de grond raakt. Adem in.", "Duw jezelf terug omhoog. Adem uit."]],
+  "Deadlift": ["Barbell_Deadlift", "onderrug", "kuiten, onderarmen, billen, hamstrings, brede rugspier, middenrug, bovenbenen (voorkant), trapezius", ["Ga met je voeten op heupbreedte onder de stang staan, de stang boven je middenvoet.", "Buig door je knieën en pak de stang net buiten je benen. Rug recht, borst vooruit.", "Duw door je hielen en kom omhoog door je heupen naar voren te brengen. Houd de stang dicht bij je benen.", "Laat de stang gecontroleerd langs dezelfde weg terug zakken."]],
+  "Lat pulldown": ["Wide-Grip_Lat_Pulldown", "brede rugspier", "biceps, middenrug, schouders", ["Ga zitten en zet je knieën onder het kussen. Pak de stang breed vast.", "Leun iets naar achteren en houd je borst vooruit.", "Trek de stang naar je bovenborst en knijp je schouderbladen samen. Adem uit.", "Laat de stang langzaam terug omhoog gaan tot je armen gestrekt zijn. Adem in."]],
+  "Pull-ups": ["Pullups", "brede rugspier", "biceps, middenrug", ["Hang aan de stang met je handen iets breder dan je schouders, handpalmen van je af.", "Span je buik aan en trek je schouders naar beneden.", "Trek jezelf op tot je kin boven de stang is. Adem uit.", "Laat jezelf rustig zakken tot je armen gestrekt zijn. Adem in."]],
+  "Barbell row": ["Bent_Over_Barbell_Row", "middenrug", "biceps, brede rugspier, schouders", ["Pak de stang op schouderbreedte en buig voorover vanuit je heupen, rug recht, knieën licht gebogen.", "Laat de stang onder je hangen met gestrekte armen.", "Trek de stang naar je onderbuik en knijp je schouderbladen samen. Adem uit.", "Laat de stang rustig terug zakken. Adem in."]],
+  "Dumbbell row": ["One-Arm_Dumbbell_Row", "middenrug", "biceps, brede rugspier, schouders", ["Zet één knie en één hand op de bank, rug recht en evenwijdig aan de grond.", "Pak de dumbbell met je andere hand en laat je arm hangen.", "Trek de dumbbell langs je lichaam omhoog naar je heup. Adem uit.", "Laat hem rustig zakken tot je arm gestrekt is. Adem in."]],
+  "Seated cable row": ["Seated_Cable_Rows", "middenrug", "biceps, brede rugspier, schouders", ["Ga zitten met je voeten tegen de steunen en je knieën licht gebogen. Pak de greep.", "Zit rechtop met je borst vooruit.", "Trek de greep naar je buik en knijp je schouderbladen samen. Adem uit.", "Laat de greep langzaam terug naar voren gaan zonder je rug rond te maken. Adem in."]],
+  "T-bar row": ["T-Bar_Row_with_Handle", "middenrug", "biceps, brede rugspier", ["Ga over de stang staan en pak de greep vast.", "Buig voorover vanuit je heupen met een rechte rug en licht gebogen knieën.", "Trek de greep naar je borst en knijp je schouderbladen samen. Adem uit.", "Laat hem rustig zakken tot je armen gestrekt zijn. Adem in."]],
+  "Machine row": ["Leverage_Iso_Row", "brede rugspier", "biceps, middenrug", ["Stel de stoel zo in dat de grepen op borsthoogte zitten. Zet je borst tegen het kussen.", "Pak de grepen vast.", "Trek de grepen naar je toe en knijp je schouderbladen samen. Adem uit.", "Laat ze langzaam terug naar voren gaan. Adem in."]],
+  "Straight-arm pulldown": ["Straight-Arm_Pulldown", "brede rugspier", "", ["Ga voor de kabel staan met de stang hoog en pak hem op schouderbreedte.", "Buig iets voorover en houd je armen bijna gestrekt.", "Duw de stang in een boog naar je bovenbenen. Adem uit.", "Laat hem rustig terug omhoog gaan tot ooghoogte. Adem in."]],
+  "Back extension": ["Hyperextensions_Back_Extensions", "onderrug", "billen, hamstrings", ["Ga in de rugstrekbank liggen met je heupen op het kussen en je voeten vast.", "Kruis je armen voor je borst.", "Buig rustig voorover vanuit je heupen met een rechte rug. Adem in.", "Kom terug omhoog tot je lichaam een rechte lijn vormt, niet verder. Adem uit."]],
+  "Overhead press (stang)": ["Standing_Military_Press", "schouders", "triceps", ["Ga rechtop staan en houd de stang op schouderhoogte, handen iets breder dan je schouders.", "Span je buik en billen aan.", "Druk de stang recht omhoog tot boven je hoofd. Adem uit.", "Laat hem rustig terug zakken naar je schouders. Adem in."]],
+  "Dumbbell shoulder press": ["Dumbbell_Shoulder_Press", "schouders", "triceps", ["Ga rechtop zitten met een dumbbell in elke hand op schouderhoogte, handpalmen naar voren.", "Druk de dumbbells omhoog tot boven je hoofd. Adem uit.", "Laat ze rustig terug zakken tot schouderhoogte. Adem in."]],
+  "Shoulder press machine": ["Machine_Shoulder_Military_Press", "schouders", "triceps", ["Stel de stoel zo in dat de grepen op schouderhoogte zitten.", "Pak de grepen en houd je rug tegen het kussen.", "Druk de grepen omhoog tot je armen bijna gestrekt zijn. Adem uit.", "Laat ze rustig terugkomen. Adem in."]],
+  "Lateral raises": ["Side_Lateral_Raise", "schouders", "", ["Ga rechtop staan met een dumbbell in elke hand naast je lichaam.", "Houd een lichte buiging in je ellebogen.", "Til je armen opzij omhoog tot schouderhoogte. Adem uit.", "Laat ze langzaam terug zakken. Adem in."]],
+  "Cable lateral raises": ["Standing_Low-Pulley_Deltoid_Raise", "schouders", "onderarmen", ["Ga zijwaarts naast de kabel staan, kabel laag. Pak de greep met de hand die het verst van de kabel is.", "Laat de greep voor je lichaam hangen, elleboog licht gebogen.", "Til je arm opzij omhoog tot schouderhoogte. Adem uit.", "Laat hem langzaam terug zakken. Adem in."]],
+  "Front raises": ["Front_Dumbbell_Raise", "schouders", "", ["Ga rechtop staan met de dumbbells voor je bovenbenen.", "Til één of beide armen recht voor je omhoog tot schouderhoogte. Adem uit.", "Laat ze langzaam terug zakken. Adem in."]],
+  "Reverse flyes": ["Reverse_Flyes", "schouders", "", ["Buig voorover vanuit je heupen met een rechte rug, dumbbells onder je borst.", "Houd een lichte buiging in je ellebogen.", "Til je armen opzij omhoog tot schouderhoogte en knijp je schouderbladen samen. Adem uit.", "Laat ze langzaam terug zakken. Adem in."]],
+  "Face pulls": ["Face_Pull", "schouders", "middenrug", ["Zet de kabel hoog met een touw eraan en pak beide uiteinden.", "Stap een stukje naar achteren tot je armen gestrekt zijn.", "Trek het touw naar je gezicht en trek de uiteinden uit elkaar. Ellebogen hoog. Adem uit.", "Laat het touw rustig terug naar voren gaan. Adem in."]],
+  "Upright row": ["Upright_Barbell_Row", "schouders", "trapezius", ["Ga rechtop staan en pak de stang op schouderbreedte voor je bovenbenen.", "Trek de stang langs je lichaam omhoog tot onder je kin. Ellebogen gaan hoger dan je handen. Adem uit.", "Laat de stang rustig terug zakken. Adem in."]],
+  "Shrugs": ["Barbell_Shrug", "trapezius", "", ["Ga rechtop staan met de stang of dumbbells aan gestrekte armen.", "Trek je schouders zo hoog mogelijk op richting je oren. Adem uit.", "Houd het even vast en laat ze langzaam zakken. Adem in."]],
+  "Barbell curl": ["Barbell_Curl", "biceps", "onderarmen", ["Ga rechtop staan en pak de stang op schouderbreedte, handpalmen naar voren.", "Houd je ellebogen tegen je zij.", "Krul de stang omhoog naar je schouders. Adem uit.", "Laat hem langzaam terug zakken tot je armen gestrekt zijn. Adem in."]],
+  "Dumbbell curl": ["Dumbbell_Bicep_Curl", "biceps", "onderarmen", ["Ga rechtop staan met een dumbbell in elke hand, armen gestrekt.", "Houd je ellebogen tegen je zij en draai je handpalmen naar voren.", "Krul de dumbbells omhoog naar je schouders. Adem uit.", "Laat ze langzaam terug zakken. Adem in."]],
+  "Hammer curl": ["Hammer_Curls", "biceps", "", ["Ga rechtop staan met een dumbbell in elke hand, handpalmen naar je lichaam.", "Houd je ellebogen tegen je zij.", "Krul de dumbbells omhoog zonder je pols te draaien. Adem uit.", "Laat ze langzaam terug zakken. Adem in."]],
+  "Preacher curl": ["Preacher_Curl", "biceps", "", ["Ga aan de preacherbank zitten met de achterkant van je bovenarmen op het kussen.", "Pak de stang met je handpalmen naar boven.", "Krul de stang omhoog naar je schouders. Adem uit.", "Laat hem langzaam zakken tot je armen bijna gestrekt zijn. Adem in."]],
+  "Cable curl": ["Standing_Biceps_Cable_Curl", "biceps", "", ["Ga voor de kabel staan, kabel laag, en pak de stang met je handpalmen naar boven.", "Houd je ellebogen tegen je zij.", "Krul de stang omhoog naar je schouders. Adem uit.", "Laat hem langzaam terug zakken. Adem in."]],
+  "Incline dumbbell curl": ["Incline_Dumbbell_Curl", "biceps", "", ["Zet de bank schuin en ga liggen met een dumbbell in elke hand, armen hangend.", "Houd je bovenarmen stil.", "Krul de dumbbells omhoog naar je schouders. Adem uit.", "Laat ze langzaam zakken tot je armen gestrekt zijn. Adem in."]],
+  "Concentration curl": ["Concentration_Curls", "biceps", "onderarmen", ["Ga op de bank zitten en zet je elleboog tegen de binnenkant van je bovenbeen.", "Laat de dumbbell hangen met een gestrekte arm.", "Krul de dumbbell omhoog naar je schouder. Adem uit.", "Laat hem langzaam terug zakken. Adem in."]],
+  "Chin-ups": ["Chin-Up", "brede rugspier", "biceps, onderarmen, middenrug", ["Hang aan de stang met je handen op schouderbreedte, handpalmen naar je toe.", "Span je buik aan.", "Trek jezelf op tot je kin boven de stang is. Adem uit.", "Laat jezelf rustig zakken tot je armen gestrekt zijn. Adem in."]],
+  "Triceps pushdown (kabel)": ["Triceps_Pushdown", "triceps", "", ["Ga voor de kabel staan, kabel hoog, en pak de stang of het touw.", "Houd je ellebogen tegen je zij.", "Duw de stang naar beneden tot je armen gestrekt zijn. Adem uit.", "Laat hem rustig terug omhoog komen tot je onderarmen evenwijdig aan de grond zijn. Adem in."]],
+  "Overhead triceps extension": ["Cable_Rope_Overhead_Triceps_Extension", "triceps", "", ["Zet de kabel laag met een touw eraan en draai je om, met het touw achter je hoofd.", "Houd je ellebogen naast je hoofd, wijzend naar voren.", "Strek je armen naar voren en omhoog. Adem uit.", "Laat het touw rustig terug zakken achter je hoofd. Adem in."]],
+  "Skull crushers": ["EZ-Bar_Skullcrusher", "triceps", "onderarmen", ["Ga plat op de bank liggen en houd de stang met gestrekte armen boven je borst.", "Houd je bovenarmen stil.", "Buig je ellebogen en laat de stang zakken naar je voorhoofd. Adem in.", "Strek je armen weer. Adem uit."]],
+  "Close-grip bankdrukken": ["Close-Grip_Barbell_Bench_Press", "triceps", "borst, schouders", ["Ga plat op de bank liggen en pak de stang op schouderbreedte.", "Houd je ellebogen dicht bij je lichaam.", "Laat de stang zakken naar je onderborst. Adem in.", "Druk hem terug omhoog. Adem uit."]],
+  "Dips (triceps)": ["Dips_-_Triceps_Version", "triceps", "borst, schouders", ["Steun met gestrekte armen op de dipbrug.", "Houd je lichaam rechtop en je ellebogen naar achteren.", "Zak tot je bovenarmen ongeveer evenwijdig aan de grond zijn. Adem in.", "Duw jezelf terug omhoog. Adem uit."]],
+  "Triceps kickbacks": ["Tricep_Dumbbell_Kickback", "triceps", "", ["Buig voorover met een rechte rug en steun met één hand op de bank.", "Houd je bovenarm stil langs je lichaam, elleboog gebogen.", "Strek je arm naar achteren. Adem uit.", "Laat de dumbbell rustig terug zakken. Adem in."]],
+  "Squat": ["Barbell_Full_Squat", "bovenbenen (voorkant)", "kuiten, billen, hamstrings, onderrug", ["Leg de stang op je bovenrug en ga staan met je voeten iets breder dan je heupen.", "Houd je borst vooruit en je rug recht.", "Zak door je knieën alsof je gaat zitten, tot je bovenbenen minstens evenwijdig aan de grond zijn. Adem in.", "Duw door je hielen terug omhoog. Adem uit."]],
+  "Front squat": ["Front_Barbell_Squat", "bovenbenen (voorkant)", "kuiten, billen, hamstrings", ["Leg de stang voor op je schouders, ellebogen hoog en naar voren.", "Ga staan met je voeten op schouderbreedte.", "Zak door je knieën met een rechte rug. Adem in.", "Duw jezelf terug omhoog. Adem uit."]],
+  "Goblet squat": ["Goblet_Squat", "bovenbenen (voorkant)", "kuiten, billen, hamstrings, schouders", ["Houd een dumbbell of kettlebell rechtop tegen je borst.", "Ga staan met je voeten iets breder dan je heupen.", "Zak diep door je knieën met je borst vooruit. Adem in.", "Duw door je hielen terug omhoog. Adem uit."]],
+  "Leg press": ["Leg_Press", "bovenbenen (voorkant)", "kuiten, billen, hamstrings", ["Ga in de machine zitten en zet je voeten op heupbreedte op de plaat.", "Duw de plaat los en haal de veiligheid eraf.", "Laat de plaat rustig zakken tot je knieën ongeveer 90 graden gebogen zijn. Adem in.", "Duw de plaat terug omhoog zonder je knieën op slot te zetten. Adem uit."]],
+  "Hack squat": ["Hack_Squat", "bovenbenen (voorkant)", "kuiten, billen, hamstrings", ["Ga in de machine staan met je rug tegen het kussen en je schouders onder de steunen.", "Zet je voeten op schouderbreedte op de plaat.", "Zak door je knieën tot je bovenbenen evenwijdig aan de plaat zijn. Adem in.", "Duw jezelf terug omhoog. Adem uit."]],
+  "Lunges": ["Dumbbell_Lunges", "bovenbenen (voorkant)", "kuiten, billen, hamstrings", ["Ga rechtop staan met een dumbbell in elke hand.", "Zet een grote stap naar voren.", "Zak tot je achterste knie bijna de grond raakt. Adem in.", "Duw je terug naar de beginhouding en wissel van been. Adem uit."]],
+  "Bulgarian split squat": ["Split_Squat_with_Dumbbells", "bovenbenen (voorkant)", "billen, hamstrings", ["Ga met je rug naar de bank staan en leg je achterste voet op de bank.", "Houd een dumbbell in elke hand.", "Zak door je voorste knie tot je bovenbeen evenwijdig aan de grond is. Adem in.", "Duw jezelf terug omhoog via je voorste hiel. Adem uit."]],
+  "Leg extension": ["Leg_Extensions", "bovenbenen (voorkant)", "", ["Ga in de machine zitten met het kussen op je enkels.", "Pak de handgrepen vast.", "Strek je benen tot ze recht zijn. Adem uit.", "Laat ze langzaam terug zakken. Adem in."]],
+  "Leg curl (liggend)": ["Lying_Leg_Curls", "hamstrings", "", ["Ga op je buik in de machine liggen met het kussen net boven je hielen.", "Pak de handgrepen vast.", "Krul je hielen naar je billen. Adem uit.", "Laat ze langzaam terug zakken. Adem in."]],
+  "Leg curl (zittend)": ["Seated_Leg_Curl", "hamstrings", "", ["Ga in de machine zitten met het kussen achter je enkels en de klem op je bovenbenen.", "Pak de handgrepen vast.", "Trek je hielen naar beneden en onder je. Adem uit.", "Laat ze langzaam terugkomen. Adem in."]],
+  "Roemeense deadlift": ["Romanian_Deadlift", "hamstrings", "kuiten, billen, onderrug", ["Ga rechtop staan met de stang voor je bovenbenen.", "Houd je knieën licht gebogen en je rug recht.", "Duw je heupen naar achteren en laat de stang langs je benen zakken tot je een rek voelt in je hamstrings. Adem in.", "Breng je heupen naar voren en kom terug omhoog. Adem uit."]],
+  "Adductor machine": ["Thigh_Adductor", "binnenkant dijen", "billen, hamstrings", ["Ga in de machine zitten met de kussens tegen de binnenkant van je knieën.", "Begin met je benen uit elkaar.", "Duw je benen naar elkaar toe. Adem uit.", "Laat ze langzaam terug uit elkaar gaan. Adem in."]],
+  "Hip thrust": ["Barbell_Hip_Thrust", "billen", "kuiten, hamstrings", ["Ga met je bovenrug tegen de bank zitten en leg de stang over je heupen.", "Zet je voeten op heupbreedte, knieën gebogen.", "Duw je heupen omhoog tot je lichaam een rechte lijn vormt en knijp je billen aan. Adem uit.", "Laat je heupen rustig zakken. Adem in."]],
+  "Glute bridge": ["Butt_Lift_Bridge", "billen", "hamstrings", ["Ga op je rug liggen met je knieën gebogen en je voeten plat op de grond.", "Leg je armen naast je lichaam.", "Duw je heupen omhoog en knijp je billen aan. Adem uit.", "Laat je heupen rustig zakken. Adem in."]],
+  "Cable kickbacks": ["One-Legged_Cable_Kickback", "billen", "hamstrings", ["Maak de enkelband vast aan de lage kabel en om je enkel.", "Ga voor de machine staan en houd je vast.", "Duw je been gestrekt naar achteren en knijp je bil aan. Adem uit.", "Laat je been rustig terugkomen. Adem in."]],
+  "Abductor machine": ["Thigh_Abductor", "buitenkant heupen", "billen", ["Ga in de machine zitten met de kussens tegen de buitenkant van je knieën.", "Begin met je benen bij elkaar.", "Duw je benen uit elkaar. Adem uit.", "Laat ze langzaam terug naar elkaar gaan. Adem in."]],
+  "Step-ups": ["Dumbbell_Step_Ups", "bovenbenen (voorkant)", "kuiten, billen, hamstrings", ["Ga voor de bank of box staan met een dumbbell in elke hand.", "Zet één voet helemaal op de bank.", "Duw jezelf omhoog via die voet tot je rechtop staat. Adem uit.", "Stap rustig terug naar beneden en wissel van been. Adem in."]],
+  "Sumo deadlift": ["Sumo_Deadlift", "hamstrings", "binnenkant dijen, onderarmen, billen, onderrug, middenrug, bovenbenen (voorkant), trapezius", ["Ga breed staan met je tenen naar buiten en de stang boven je middenvoet.", "Zak door je knieën en pak de stang tussen je benen, rug recht.", "Duw door je hielen en kom omhoog door je heupen naar voren te brengen. Adem uit.", "Laat de stang gecontroleerd terug zakken. Adem in."]],
+  "Calf raises (staand)": ["Standing_Calf_Raises", "kuiten", "", ["Ga met de bal van je voeten op de rand staan, hielen vrij.", "Houd je benen gestrekt.", "Kom zo hoog mogelijk op je tenen. Adem uit.", "Laat je hielen langzaam zakken tot onder de rand. Adem in."]],
+  "Calf raises (zittend)": ["Seated_Calf_Raise", "kuiten", "", ["Ga in de machine zitten met de bal van je voeten op de rand en het kussen op je knieën.", "Kom zo hoog mogelijk op je tenen. Adem uit.", "Laat je hielen langzaam zakken tot je een rek voelt in je kuiten. Adem in."]],
+  "Calf raises (leg press)": ["Calf_Press_On_The_Leg_Press_Machine", "kuiten", "", ["Ga in de leg press zitten met de bal van je voeten onderaan de plaat.", "Houd je benen gestrekt maar niet op slot.", "Duw de plaat weg door op je tenen te gaan. Adem uit.", "Laat de plaat langzaam terugkomen. Adem in."]],
+  "Plank": ["Plank", "buikspieren", "", ["Steun op je onderarmen en tenen, ellebogen onder je schouders.", "Houd je lichaam recht als een plank, van hoofd tot hielen.", "Span je buik en billen aan en adem rustig door.", "Houd dit vast zo lang als je kunt."]],
+  "Side plank": ["Side_Bridge", "buikspieren", "schouders", ["Ga op je zij liggen en steun op één onderarm, elleboog onder je schouder.", "Til je heupen op tot je lichaam een rechte lijn vormt.", "Span je buik aan en adem rustig door.", "Houd dit vast en wissel daarna van kant."]],
+  "Crunches": ["Crunches", "buikspieren", "", ["Ga op je rug liggen met je knieën gebogen en je voeten plat op de grond.", "Leg je handen naast je hoofd zonder aan je nek te trekken.", "Krul je schouders van de grond richting je knieën. Adem uit.", "Zak rustig terug. Adem in."]],
+  "Cable crunch": ["Cable_Crunch", "buikspieren", "", ["Kniel voor de hoge kabel en pak het touw naast je hoofd.", "Houd je heupen stil.", "Krul je bovenlichaam naar beneden richting je knieën. Adem uit.", "Kom rustig terug omhoog. Adem in."]],
+  "Hanging leg raises": ["Hanging_Leg_Raise", "buikspieren", "", ["Hang aan de stang met gestrekte armen.", "Houd je lichaam stil en zwaai niet.", "Til je benen op tot ze evenwijdig aan de grond zijn. Adem uit.", "Laat ze langzaam terug zakken. Adem in."]],
+  "Russian twists": ["Russian_Twist", "buikspieren", "onderrug", ["Ga op de grond zitten met je knieën gebogen en leun iets naar achteren.", "Houd je handen of een gewicht voor je borst.", "Draai je bovenlichaam naar links en dan naar rechts.", "Houd je rug recht en je buik aangespannen."]],
+  "Ab wheel": ["Ab_Roller", "buikspieren", "schouders", ["Kniel op de grond en pak het wiel met beide handen voor je.", "Span je buik aan.", "Rol het wiel langzaam naar voren tot je lichaam bijna gestrekt is. Adem in.", "Rol terug naar je knieën met je buikspieren. Adem uit."]],
+  "Pallof press": ["Pallof_Press", "buikspieren", "borst, schouders, triceps", ["Ga zijwaarts naast de kabel staan, kabel op borsthoogte, en houd de greep tegen je borst.", "Ga stevig staan met je buik aangespannen.", "Druk de greep recht voor je uit zonder mee te draaien. Adem uit.", "Breng hem rustig terug naar je borst. Adem in."]],
+};
+// gegevens van de eerste testversie opruimen
+try { localStorage.removeItem('gymlog_v1'); localStorage.removeItem('gymlog_v1_view'); } catch (e) {}
+
+const ICONS = {
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  x: '<path d="M18 6 6 18M6 6l12 12"/>',
+  up: '<path d="m18 15-6-6-6 6"/>',
+  down: '<path d="m6 9 6 6 6-6"/>',
+  right: '<path d="m9 18 6-6-6-6"/>',
+  left: '<path d="m15 18-6-6 6-6"/>',
+  more: '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  minus: '<path d="M5 12h14"/>',
+  play: '<path d="M7 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L8.5 4.64A1 1 0 0 0 7 5.5Z"/>',
+  trash: '<path d="M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/>',
+  flag: '<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
+  upload: '<path d="M12 15V3M7 8l5-5 5 5M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/>',
+  download: '<path d="M12 3v12M7 10l5 5 5-5M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/>',
+};
+const ic = name => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
+
+/* ---------- hulpjes ---------- */
+let uidSeq = 0;
+const uid = () => Date.now().toString(36) + (uidSeq++).toString(36) + Math.random().toString(36).slice(2, 6);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const num = v => { const n = parseFloat(String(v ?? '').replace(',', '.')); return isFinite(n) ? n : null; };
+const fmt = n => n == null ? '' : String(Math.round(n * 100) / 100).replace('.', ',');
+const kg = n => Math.round(n).toLocaleString('nl-NL') + ' kg';
+const byName = (a, b) => a.name.localeCompare(b.name, 'nl');
+const localISO = ts => { const d = new Date(ts); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+const toDate = iso => new Date(iso + 'T12:00:00');
+const mmss = sec => { sec = Math.max(0, sec); const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(s).padStart(2, '0'); };
+
+function relDate(iso) {
+  const days = Math.round((toDate(localISO(Date.now())) - toDate(iso)) / 864e5);
+  if (days === 0) return 'vandaag';
+  if (days === 1) return 'gisteren';
+  if (days < 7) return days + ' dagen geleden';
+  return toDate(iso).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
+}
+const longDate = iso => toDate(iso).toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+/* ---------- opslag ---------- */
+function fresh() {
+  const groups = [], exercises = [];
+  Object.entries(LIBRARY).forEach(([g, list]) => {
+    const gid = uid();
+    groups.push({ id: gid, name: g });
+    list.forEach(x => { const [name, note] = Array.isArray(x) ? x : [x, '']; exercises.push({ id: uid(), name, groupId: gid, note, demo: name }); });
+  });
+  return { version: 1, groups, exercises, workouts: [], sessions: [], active: null, settings: { rest: 90 } };
+}
+function normalize(d) {
+  const f = fresh();
+  return { ...f, ...d, settings: { ...f.settings, ...(d.settings || {}) } };
+}
+function load() {
+  try {
+    const d = JSON.parse(localStorage.getItem(KEY));
+    if (d && d.version) {
+      // oefeningen van vóór de voorbeelden: koppelen op naam
+      (d.exercises || []).forEach(e => { if (!('demo' in e)) e.demo = DEMOS[e.name] ? e.name : ''; });
+      return normalize(d);
+    }
+  } catch (e) {}
+  return fresh();
+}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { toast('Opslaan is mislukt'); }
+}
+
+let S = load();
+let view = 'train';
+try { view = localStorage.getItem(KEY + '_view') || 'train'; } catch (e) {}
+const ui = { workoutId: null, progressEx: null, metric: 'e1rm', exGroup: '' };
+
+const ex = id => S.exercises.find(e => e.id === id);
+const grp = id => S.groups.find(g => g.id === id);
+const demoOf = e => e && DEMOS[e.demo] ? DEMOS[e.demo] : null;
+const demoBtn = e => demoOf(e) ? `<button class="demo-btn" data-act="demo" data-id="${e.id}">${ic('play')}Voorbeeld</button>` : '';
+const exName = (id, fallback) => ex(id)?.name || fallback || '(verwijderde oefening)';
+
+/* ---------- berekeningen ---------- */
+const e1rm = (w, r) => (w > 0 && r > 0) ? (r === 1 ? w : w * (1 + r / 30)) : 0;
+const setTxt = s => s.w > 0 ? fmt(s.w) + ' × ' + s.r : s.r + ' herh.';
+const sessionVolume = s => s.entries.reduce((t, e) => t + e.sets.reduce((u, x) => u + x.w * x.r, 0), 0);
+const sessionSets = s => s.entries.reduce((t, e) => t + e.sets.length, 0);
+
+function lastSets(exId) {
+  for (let i = S.sessions.length - 1; i >= 0; i--) {
+    const e = S.sessions[i].entries.find(x => x.exerciseId === exId);
+    if (e && e.sets.length) return { date: S.sessions[i].date, sets: e.sets };
+  }
+  return null;
+}
+function lastOfWorkout(wid) {
+  for (let i = S.sessions.length - 1; i >= 0; i--) if (S.sessions[i].workoutId === wid) return S.sessions[i];
+  return null;
+}
+function history(exId) {
+  return S.sessions.filter(s => s.entries.some(e => e.exerciseId === exId && e.sets.length)).map(s => {
+    const sets = s.entries.filter(e => e.exerciseId === exId).flatMap(e => e.sets);
+    return {
+      date: s.date, sets,
+      e1rm: Math.max(...sets.map(x => e1rm(x.w, x.r))),
+      weight: Math.max(...sets.map(x => x.w)),
+      volume: sets.reduce((t, x) => t + x.w * x.r, 0),
+      reps: Math.max(...sets.map(x => x.r)),
+    };
+  });
+}
+
+/* ---------- render ---------- */
+function render() {
+  const views = { train: vTrain, workouts: vWorkouts, exercises: vExercises, progress: vProgress, more: vMore };
+  if (!views[view]) view = 'train';
+  document.getElementById('main').innerHTML = views[view]();
+  document.querySelectorAll('nav.tabs button').forEach(b => {
+    b.classList.toggle('on', b.dataset.v === view);
+    const dot = b.querySelector('.dot');
+    if (b.dataset.v === 'train' && S.active && !dot) b.insertAdjacentHTML('beforeend', '<span class="dot"></span>');
+    if (dot && !S.active) dot.remove();
+  });
+  tick();
+}
+
+/* ---- Trainen ---- */
+function vTrain() {
+  if (S.active) return vActive();
+  let h = '<h1>Training starten</h1>';
+  if (!S.workouts.length) {
+    h += `<div class="card"><div class="title" style="margin-bottom:8px">Zo begin je</div><ol class="steps">
+      <li>Maak je eigen training, bv. Push, Pull of Benen</li>
+      <li>Kies de oefeningen uit de lijst (staan er al per spiergroep in)</li>
+      <li>Start de training en vul je sets in</li></ol>
+      <button class="block primary" data-act="go" data-v="workouts">Training maken</button></div>`;
+  }
+  h += S.workouts.map(w => {
+    const last = lastOfWorkout(w.id);
+    return `<div class="card row"><div class="grow"><div class="title">${esc(w.name)}</div>
+      <div class="muted small">${w.items.length} oefening${w.items.length === 1 ? '' : 'en'}${last ? ' · laatst ' + relDate(last.date) : ''}</div></div>
+      <button class="primary" data-act="start" data-id="${w.id}">${ic('play')}Start</button></div>`;
+  }).join('');
+  h += `<button class="block" data-act="start" data-id="">${ic('plus')}Vrije training</button>`;
+
+  if (S.sessions.length) {
+    h += '<h2>Geschiedenis</h2><div class="card list">';
+    h += S.sessions.slice(-30).reverse().map(s => `<div class="li" data-act="session" data-id="${s.id}">
+      <div class="grow"><div style="font-weight:600">${esc(s.name)}</div>
+      <div class="muted small">${relDate(s.date)} · ${sessionSets(s)} sets · ${kg(sessionVolume(s))}</div></div><span class="chev">${ic('right')}</span></div>`).join('');
+    h += '</div>';
+  }
+  return h;
+}
+
+function vActive() {
+  const a = S.active;
+  let h = `<div style="margin:10px 0 14px"><h1 style="margin:0">${esc(a.name)}</h1><div class="muted">Bezig · <span id="elapsed"></span></div></div>`;
+  h += a.entries.map(entryCard).join('');
+  if (!a.entries.length) h += '<div class="card empty muted">Voeg een oefening toe om te beginnen.</div>';
+  h += `<button class="block" data-act="addToSession">${ic('plus')}Oefening toevoegen</button>
+    <button class="block primary" data-act="finish">${ic('flag')}Training afronden</button>
+    <button class="block danger" data-act="cancelSession">Training annuleren</button>`;
+  return h;
+}
+
+function entryCard(en, i) {
+  const e = ex(en.exerciseId);
+  const last = lastSets(en.exerciseId);
+  const sub = [grp(e?.groupId)?.name, en.target ? 'doel ' + en.target.sets + ' × ' + en.target.reps : ''].filter(Boolean).join(' · ');
+  return `<div class="card">
+    <div class="row"><div class="grow"><div class="title">${esc(exName(en.exerciseId, en.name))}</div><div class="muted small">${esc(sub)}</div></div>
+      ${demoBtn(e)}<button class="icon" data-act="entryMenu" data-e="${i}" aria-label="Opties">${ic('more')}</button></div>
+    ${e?.note ? `<div class="note">${esc(e.note)}</div>` : ''}
+    <div class="small" style="margin-top:6px;color:${last ? 'var(--muted)' : 'var(--accent)'}">${last ? 'Vorige keer (' + relDate(last.date) + '): ' + last.sets.map(setTxt).join(', ') : 'Eerste keer, succes!'}</div>
+    <div class="set head"><span>Set</span><span>kg</span><span>Herhalingen</span><span></span></div>
+    ${en.sets.map((s, j) => `<div class="set${s.done ? ' done' : ''}"><span class="nr">${j + 1}</span>
+      <input inputmode="decimal" data-e="${i}" data-s="${j}" data-f="w" value="${esc(s.w)}" placeholder="${esc(s.pw)}">
+      <input inputmode="numeric" data-e="${i}" data-s="${j}" data-f="r" value="${esc(s.r)}" placeholder="${esc(s.pr)}">
+      <button class="check" data-act="toggleSet" data-e="${i}" data-s="${j}" aria-label="Set klaar">${ic('check')}</button></div>`).join('')}
+    <div class="row" style="margin-top:6px"><button class="ghost" data-act="addSet" data-e="${i}">${ic('plus')}Set</button><span class="grow"></span>
+      ${en.sets.length ? `<button class="ghost" style="color:var(--muted)" data-act="delSet" data-e="${i}">${ic('minus')}Laatste set</button>` : ''}</div>
+  </div>`;
+}
+
+function newEntry(exId, targetSets, targetReps) {
+  const last = lastSets(exId);
+  const n = targetSets || last?.sets.length || 3;
+  const sets = [];
+  for (let i = 0; i < n; i++) {
+    const p = last ? last.sets[Math.min(i, last.sets.length - 1)] : null;
+    sets.push({ w: '', r: '', pw: p && p.w > 0 ? fmt(p.w) : '', pr: p ? String(p.r) : String(targetReps || ''), done: false });
+  }
+  return { exerciseId: exId, name: ex(exId)?.name || '', target: targetSets ? { sets: targetSets, reps: targetReps || '?' } : null, sets };
+}
+
+/* ---- Mijn trainingen ---- */
+function vWorkouts() {
+  const w = S.workouts.find(x => x.id === ui.workoutId);
+  if (w) return vWorkoutEdit(w);
+  let h = '<h1>Mijn trainingen</h1>';
+  if (!S.workouts.length) h += '<div class="card empty muted">Nog geen trainingen. Maak er een, bijvoorbeeld "Push" of "Benen", en kies daarna de oefeningen uit de lijst.</div>';
+  else h += '<div class="card list">' + S.workouts.map(w => `<div class="li" data-act="editWorkout" data-id="${w.id}">
+      <div class="grow"><div style="font-weight:600">${esc(w.name)}</div><div class="muted small">${esc(w.items.map(it => exName(it.exerciseId)).join(', ') || 'Nog leeg')}</div></div><span class="chev">${ic('right')}</span></div>`).join('') + '</div>';
+  h += `<button class="block primary" data-act="newWorkout">${ic('plus')}Nieuwe training</button>`;
+  return h;
+}
+
+function vWorkoutEdit(w) {
+  let h = `<button class="ghost" data-act="backWorkouts" style="margin-top:6px;padding-left:0">${ic('left')}Mijn trainingen</button>
+    <label>Naam van de training</label><input data-wname value="${esc(w.name)}">
+    <h2>Oefeningen</h2>`;
+  if (!w.items.length) h += '<div class="card empty muted">Voeg oefeningen toe aan deze training.</div>';
+  h += w.items.map((it, i) => {
+    const e = ex(it.exerciseId);
+    return `<div class="card"><div class="row"><div class="grow"><div class="title">${esc(exName(it.exerciseId))}</div><div class="muted small">${esc(grp(e?.groupId)?.name || '')}</div></div>
+      <button class="icon" data-act="moveItem" data-i="${i}" data-d="-1" aria-label="Omhoog">${ic('up')}</button>
+      <button class="icon" data-act="moveItem" data-i="${i}" data-d="1" aria-label="Omlaag">${ic('down')}</button>
+      <button class="icon" data-act="delItem" data-i="${i}" aria-label="Verwijderen">${ic('x')}</button></div>
+      <div class="row"><div class="grow"><label>Sets</label><input inputmode="numeric" data-wi="${i}" data-wf="sets" value="${esc(it.sets)}"></div>
+      <div class="grow"><label>Herhalingen</label><input data-wi="${i}" data-wf="reps" value="${esc(it.reps)}" placeholder="bv. 8-10"></div></div></div>`;
+  }).join('');
+  h += `<button class="block" data-act="addToWorkout">${ic('plus')}Oefening toevoegen</button>
+    ${w.items.length ? `<button class="block primary" data-act="start" data-id="${w.id}">${ic('play')}Start deze training</button>` : ''}
+    <button class="block danger" data-act="delWorkout">Training verwijderen</button>`;
+  return h;
+}
+
+const chips = (cur, act) => '<div class="chips">' + [{ id: '', name: 'Alle' }, ...S.groups].map(g =>
+  `<button class="chip${cur === g.id ? ' on' : ''}" data-act="${act}" data-id="${g.id}">${esc(g.name)}</button>`).join('') + '</div>';
+
+/* ---- Oefeningen ---- */
+function vExercises() {
+  let h = '<h1>Oefeningen</h1>' + chips(ui.exGroup, 'exGroup') + '<button class="block primary" style="margin-top:4px" data-act="newExercise">' + ic('plus') + 'Nieuwe oefening</button>';
+  const orphan = S.exercises.filter(e => !grp(e.groupId));
+  const sections = S.groups.filter(g => !ui.exGroup || g.id === ui.exGroup).map(g => ({ name: g.name, list: S.exercises.filter(e => e.groupId === g.id) }));
+  if (orphan.length && !ui.exGroup) sections.push({ name: 'Overig', list: orphan });
+  h += sections.map(sec => {
+    const list = sec.list.slice().sort(byName);
+    return `<h2>${esc(sec.name)} · ${list.length}</h2>` + (list.length
+      ? '<div class="card list">' + list.map(e => {
+          const last = lastSets(e.id);
+          return `<div class="li" data-act="editExercise" data-id="${e.id}"><div class="grow"><div>${esc(e.name)}</div>
+            ${last || e.note ? `<div class="muted small">${last ? 'Laatst: ' + last.sets.map(setTxt).join(', ') : esc(e.note)}</div>` : ''}</div>${demoBtn(e)}<span class="chev">${ic('right')}</span></div>`;
+        }).join('') + '</div>'
+      : '<div class="muted small" style="padding:0 4px">Nog geen oefeningen</div>');
+  }).join('');
+  h += '<button class="block" style="margin-top:24px" data-act="manageGroups">Spiergroepen beheren</button>';
+  return h;
+}
+
+/* ---- Progressie ---- */
+function vProgress() {
+  let h = '<h1>Progressie</h1>';
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const monday = new Date(today); monday.setDate(today.getDate() - (today.getDay() + 6) % 7);
+  const wk = localISO(monday.getTime()), mo = localISO(new Date(today.getFullYear(), today.getMonth(), 1).getTime());
+  h += `<div class="tiles">
+    <div class="tile"><div class="v">${S.sessions.filter(s => s.date >= wk).length}</div><div class="l">Deze week</div></div>
+    <div class="tile"><div class="v">${S.sessions.filter(s => s.date >= mo).length}</div><div class="l">Deze maand</div></div>
+    <div class="tile"><div class="v">${S.sessions.length}</div><div class="l">Totaal</div></div></div>`;
+
+  const cutoff = localISO(Date.now() - 6 * 864e5);
+  const per = {};
+  S.sessions.filter(s => s.date >= cutoff).forEach(s => s.entries.forEach(e => {
+    const g = grp(ex(e.exerciseId)?.groupId)?.name || 'Overig';
+    per[g] = (per[g] || 0) + e.sets.length;
+  }));
+  const rows = Object.entries(per).sort((a, b) => b[1] - a[1]);
+  const max = Math.max(1, ...rows.map(r => r[1]));
+  h += '<h2>Sets per spiergroep · laatste 7 dagen</h2><div class="card">' + (rows.length
+    ? rows.map(([g, n]) => `<div class="bar"><span>${esc(g)}</span><div class="track"><div class="fill" style="width:${n / max * 100}%"></div></div><span class="n">${n}</span></div>`).join('')
+    : '<div class="muted small">Nog geen trainingen deze week.</div>') + '</div>';
+
+  const trained = S.exercises.filter(e => lastSets(e.id));
+  h += '<h2>Per oefening</h2>';
+  if (!trained.length) return h + '<div class="card empty muted">Rond je eerste training af om hier je progressie te zien.</div>';
+  if (!trained.some(e => e.id === ui.progressEx)) {
+    const lastS = S.sessions[S.sessions.length - 1];
+    ui.progressEx = lastS?.entries.find(en => ex(en.exerciseId))?.exerciseId || trained[0].id;
+  }
+  h += '<select data-pick-ex>' + S.groups.map(g => {
+    const list = trained.filter(e => e.groupId === g.id).sort(byName);
+    return list.length ? `<optgroup label="${esc(g.name)}">${list.map(e => `<option value="${e.id}"${e.id === ui.progressEx ? ' selected' : ''}>${esc(e.name)}</option>`).join('')}</optgroup>` : '';
+  }).join('') + trained.filter(e => !grp(e.groupId)).map(e => `<option value="${e.id}"${e.id === ui.progressEx ? ' selected' : ''}>${esc(e.name)}</option>`).join('') + '</select>';
+
+  const hist = history(ui.progressEx);
+  const bestW = hist.reduce((b, x) => x.weight > b ? x.weight : b, 0);
+  const best1 = Math.max(...hist.map(x => x.e1rm));
+  const bestR = Math.max(...hist.map(x => x.reps));
+  const bodyweight = bestW === 0;
+  if (bodyweight && (ui.metric === 'e1rm' || ui.metric === 'weight')) ui.metric = 'reps';
+  h += `<div class="tiles two" style="margin-top:10px">
+    ${bodyweight
+      ? `<div class="tile"><div class="v">${bestR}</div><div class="l">Meeste herhalingen</div></div>`
+      : `<div class="tile"><div class="v">${fmt(bestW)} kg</div><div class="l">Zwaarste gewicht</div></div>
+         <div class="tile"><div class="v">${fmt(Math.round(best1 * 2) / 2)} kg</div><div class="l">Geschat max. (1 herh.)</div></div>`}
+    <div class="tile"><div class="v">${hist.length}×</div><div class="l">Getraind</div></div>
+    <div class="tile"><div class="v">${relDate(hist[hist.length - 1].date)}</div><div class="l">Laatst</div></div></div>`;
+
+  const metrics = bodyweight ? [['reps', 'Herhalingen'], ['volume', 'Volume']] : [['e1rm', 'Geschat max'], ['weight', 'Gewicht'], ['volume', 'Volume'], ['reps', 'Herh.']];
+  h += '<div class="seg">' + metrics.map(([k, l]) => `<button class="${ui.metric === k ? 'on' : ''}" data-act="metric" data-m="${k}">${l}</button>`).join('') + '</div>';
+  h += '<div class="card">' + chartSvg(hist.map(x => ({ t: toDate(x.date).getTime(), v: x[ui.metric] })), ui.metric === 'reps' ? '' : ' kg') + '</div>';
+
+  h += '<h2>Geschiedenis</h2><div class="card list">' + hist.slice(-15).reverse().map(x =>
+    `<div class="li" style="cursor:default"><div class="grow"><div class="small muted">${relDate(x.date)}</div><div>${x.sets.map(setTxt).join(', ')}</div></div></div>`).join('') + '</div>';
+  return h;
+}
+
+function chartSvg(pts, unit) {
+  if (pts.length < 2) return '<div class="muted small">Na twee trainingen met deze oefening zie je hier een grafiek.</div>';
+  const W = 340, H = 190, pl = 40, pr = 12, pt = 12, pb = 26;
+  let x0 = Math.min(...pts.map(p => p.t)), x1 = Math.max(...pts.map(p => p.t));
+  if (x1 === x0) x1 = x0 + 1;
+  let y0 = Math.min(...pts.map(p => p.v)), y1 = Math.max(...pts.map(p => p.v));
+  const pad = (y1 - y0) * 0.2 || Math.max(1, y1 * 0.1);
+  y0 = Math.max(0, y0 - pad); y1 += pad;
+  const X = t => pl + (t - x0) / (x1 - x0) * (W - pl - pr);
+  const Y = v => pt + (1 - (v - y0) / (y1 - y0)) * (H - pt - pb);
+  let g = '';
+  for (let i = 0; i <= 3; i++) {
+    const v = y0 + (y1 - y0) * i / 3, y = Y(v);
+    g += `<line x1="${pl}" x2="${W - pr}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-width="1"/>
+      <text x="${pl - 6}" y="${y + 4}" text-anchor="end" font-size="11" fill="var(--muted)">${Math.round(v).toLocaleString('nl-NL')}</text>`;
+  }
+  const dl = t => new Date(t).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
+  g += `<text x="${pl}" y="${H - 6}" font-size="11" fill="var(--muted)">${dl(x0)}</text>
+    <text x="${W - pr}" y="${H - 6}" text-anchor="end" font-size="11" fill="var(--muted)">${dl(x1)}</text>`;
+  const line = pts.map(p => X(p.t).toFixed(1) + ',' + Y(p.v).toFixed(1)).join(' ');
+  const area = `${X(pts[0].t)},${H - pb} ${line} ${X(pts[pts.length - 1].t)},${H - pb}`;
+  const lp = pts[pts.length - 1];
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}">
+    <defs><linearGradient id="ga" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".28"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>
+    ${g}<polygon points="${area}" fill="url(#ga)"/>
+    <polyline points="${line}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    ${pts.map(p => `<circle cx="${X(p.t)}" cy="${Y(p.v)}" r="3.5" fill="var(--card)" stroke="var(--accent)" stroke-width="2"/>`).join('')}
+    <text x="${Math.min(X(lp.t), W - pr)}" y="${Math.max(Y(lp.v) - 10, 11)}" text-anchor="end" font-size="12" font-weight="700" fill="var(--text)">${fmt(Math.round(lp.v * 10) / 10)}${unit}</text>
+  </svg>`;
+}
+
+/* ---- Meer ---- */
+function vMore() {
+  return `<h1>Meer</h1>
+    <div class="card"><label style="margin-top:0">Rusttijd tussen sets (seconden)</label>
+      <input inputmode="numeric" data-setting="rest" value="${S.settings.rest}">
+      <div class="muted small" style="margin-top:6px">De rusttimer start vanzelf als je een set afvinkt.</div></div>
+    <h2>Back-up</h2>
+    <div class="card"><p class="muted small">Je gegevens staan alleen op dit apparaat, in de browser. Maak af en toe een back-up.
+      Met een back-up zet je ook je trainingen en oefeningen van je laptop over naar je telefoon: maak hem op de laptop, stuur het bestand naar je telefoon (bv. via AirDrop) en zet hem daar terug.</p>
+      <button class="block primary" data-act="export">${ic('download')}Back-up maken</button>
+      <button class="block" data-act="import">${ic('upload')}Back-up terugzetten</button></div>
+    <h2>Gegevens</h2>
+    <div class="card muted small">${S.exercises.length} oefeningen · ${S.workouts.length} eigen trainingen · ${S.sessions.length}× getraind</div>
+    <button class="block danger" data-act="reset">Alles wissen</button>`;
+}
+
+/* ---------- modal & toast ---------- */
+const modal = document.getElementById('modal');
+function openModal(html) { modal.innerHTML = '<div class="sheet">' + html + '</div>'; modal.classList.add('open'); }
+function closeModal() { modal.classList.remove('open'); modal.innerHTML = ''; picker = null; clearInterval(demoTimer); }
+let demoTimer;
+function showDemo(e) {
+  const [dir, primary, secondary, steps] = demoOf(e);
+  const src = f => DEMO_IMG + dir + '/' + f + '.jpg';
+  openModal(modalHead(e.name) + `
+    <div class="demo-img"><img id="demoImg" src="${src(0)}" alt="Voorbeeld ${esc(e.name)}">
+      <div class="dots"><span class="on"></span><span></span></div></div>
+    <span class="mchip">${esc(primary.charAt(0).toUpperCase() + primary.slice(1))}</span>${secondary ? `<span class="mchip sec">ook: ${esc(secondary)}</span>` : ''}
+    <ol class="demo-steps">${steps.map(t => `<li>${esc(t)}</li>`).join('')}</ol>`);
+  const img = document.getElementById('demoImg');
+  img.onerror = () => {
+    clearInterval(demoTimer);
+    img.parentElement.innerHTML = '<div class="off">Foto\'s konden niet laden. Heb je internet? Na één keer bekijken werken ze ook offline.</div>';
+  };
+  new Image().src = src(1);
+  let f = 0;
+  clearInterval(demoTimer);
+  demoTimer = setInterval(() => {
+    f = 1 - f; img.src = src(f);
+    img.parentElement.querySelectorAll('.dots span').forEach((d, i) => d.classList.toggle('on', i === f));
+  }, 1100);
+}
+modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+let toastTimer;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+function ask(msg, okLabel = 'Ja', danger = true) {
+  const box = document.getElementById('confirm');
+  box.innerHTML = `<div class="sheet"><p style="white-space:pre-line;margin-bottom:6px">${esc(msg)}</p>
+    <button class="block ${danger ? 'primary dangerbg' : 'primary'}" id="cfOk">${esc(okLabel)}</button>
+    <button class="block" id="cfNo">Terug</button></div>`;
+  box.classList.add('open');
+  return new Promise(res => {
+    const done = v => { box.classList.remove('open'); box.innerHTML = ''; res(v); };
+    document.getElementById('cfOk').onclick = () => done(true);
+    document.getElementById('cfNo').onclick = () => done(false);
+    box.onclick = e => { if (e.target === box) done(false); };
+  });
+}
+const modalHead = title => `<div class="row" style="margin-bottom:6px"><h3 class="grow">${esc(title)}</h3><button class="icon" data-act="close" aria-label="Sluiten">${ic('x')}</button></div>`;
+
+function askName(title, value, onSave) {
+  openModal(modalHead(title) + `<input id="askInput" value="${esc(value)}" placeholder="Naam"><button class="block primary" id="askSave">Opslaan</button>`);
+  const inp = document.getElementById('askInput');
+  const go = () => { const v = inp.value.trim(); if (!v) return toast('Vul een naam in'); closeModal(); onSave(v); };
+  document.getElementById('askSave').onclick = go;
+  inp.onkeydown = e => { if (e.key === 'Enter') go(); };
+  setTimeout(() => inp.focus(), 50);
+}
+
+/* ---- oefening-formulier ---- */
+function exerciseForm(id, after) {
+  const e = ex(id);
+  openModal(modalHead(e ? 'Oefening bewerken' : 'Nieuwe oefening') + (demoOf(e) ? `<button class="block" style="margin-top:4px" data-act="demo" data-id="${e.id}">${ic('play')}Voorbeeld bekijken</button>` : '') + `
+    <label>Naam</label><input id="fxName" value="${esc(e?.name)}" placeholder="bv. Bankdrukken">
+    <label>Spiergroep</label><select id="fxGroup">${S.groups.map(g => `<option value="${g.id}"${(e ? e.groupId : ui.exGroup || ui.lastGroup) === g.id ? ' selected' : ''}>${esc(g.name)}</option>`).join('')}</select>
+    <label>Notitie (optioneel)</label><textarea id="fxNote" placeholder="bv. stoel stand 4, smalle grip">${esc(e?.note)}</textarea>
+    <button class="block primary" id="fxSave">Opslaan</button>
+    ${e ? '<button class="block danger" id="fxDel">Oefening verwijderen</button>' : ''}`);
+  if (!e) setTimeout(() => document.getElementById('fxName').focus(), 50);
+  document.getElementById('fxSave').onclick = () => {
+    const name = document.getElementById('fxName').value.trim();
+    if (!name) return toast('Vul een naam in');
+    const groupId = document.getElementById('fxGroup').value, note = document.getElementById('fxNote').value.trim();
+    ui.lastGroup = groupId;
+    let target = e;
+    if (e) Object.assign(e, { name, groupId, note });
+    else { target = { id: uid(), name, groupId, note }; S.exercises.push(target); }
+    save(); closeModal(); render();
+    toast(e ? 'Opgeslagen' : 'Oefening toegevoegd');
+    if (after) after(target.id);
+  };
+  if (e) document.getElementById('fxDel').onclick = async () => {
+    if (!await ask(`"${e.name}" verwijderen? Hij verdwijnt ook uit je eigen trainingen. Je trainingsgeschiedenis blijft bewaard.`)) return;
+    S.exercises = S.exercises.filter(x => x.id !== e.id);
+    S.workouts.forEach(w => { w.items = w.items.filter(it => it.exerciseId !== e.id); });
+    save(); closeModal(); render();
+  };
+}
+
+/* ---- spiergroepen ---- */
+function groupsModal() {
+  openModal(modalHead('Spiergroepen') + S.groups.map(g => {
+    const n = S.exercises.filter(e => e.groupId === g.id).length;
+    return `<div class="row" style="margin-top:8px"><input class="grow" data-gname="${g.id}" value="${esc(g.name)}">
+      <button class="icon" data-act="moveGroup" data-id="${g.id}" data-d="-1" aria-label="Omhoog">${ic('up')}</button>
+      <button class="icon" data-act="delGroup" data-id="${g.id}" aria-label="Verwijderen">${ic('x')}</button></div>`;
+  }).join('') + `<div class="row" style="margin-top:16px"><input class="grow" id="newGroup" placeholder="Nieuwe spiergroep"><button class="primary" data-act="addGroup">Toevoegen</button></div>`);
+}
+
+/* ---- oefeningen kiezen ---- */
+let picker = null;
+function openPicker(title, existing, onDone) {
+  picker = { title, existing: new Set(existing), sel: new Set(), q: '', g: '', onDone };
+  showPicker();
+}
+function showPicker() {
+  openModal(modalHead(picker.title) + `
+    <input id="pickQ" placeholder="Zoeken…" value="${esc(picker.q)}" style="margin:6px 0 4px">
+    <div id="pickChips"></div><div id="pickList"></div>
+    <button class="block" data-act="pickNew">${ic('plus')}Nieuwe oefening maken</button>
+    <button class="block primary" data-act="pickDone" id="pickBtn"></button>`);
+  document.getElementById('pickQ').oninput = e => { picker.q = e.target.value; pickList(); };
+  pickList();
+}
+function pickList() {
+  const q = picker.q.trim().toLowerCase();
+  const list = S.exercises.filter(e => !q || e.name.toLowerCase().includes(q));
+  let h = '';
+  const groups = picker.g ? [grp(picker.g)] : [...S.groups, { id: null, name: 'Overig' }];
+  document.getElementById('pickChips').innerHTML = chips(picker.g, 'pickGroup');
+  groups.forEach(g => {
+    const items = list.filter(e => g.id ? e.groupId === g.id : !grp(e.groupId)).sort(byName);
+    if (!items.length) return;
+    h += `<h2 style="margin:16px 0 4px">${esc(g.name)}</h2>` + items.map(e => `<div class="pick${picker.sel.has(e.id) ? ' on' : ''}${picker.existing.has(e.id) ? ' has' : ''}" data-act="pickToggle" data-id="${e.id}">
+      <span class="box">${picker.sel.has(e.id) ? ic('check') : ''}</span><span class="grow">${esc(e.name)}</span>${picker.existing.has(e.id) ? '<span class="small muted">staat er al in</span>' : ''}</div>`).join('');
+  });
+  if (!h) h = `<div class="muted small" style="padding:16px 4px">${S.exercises.length ? 'Niets gevonden.' : 'Je hebt nog geen oefeningen. Maak er hieronder een.'}</div>`;
+  document.getElementById('pickList').innerHTML = h;
+  const n = picker.sel.size;
+  document.getElementById('pickBtn').textContent = n ? `${n} toevoegen` : 'Kies oefeningen';
+}
+
+/* ---------- acties ---------- */
+const A = {
+  go(d) { view = d.v; ui.workoutId = null; try { localStorage.setItem(KEY + '_view', view); } catch (e) {} render(); scrollTo(0, 0); },
+  close: closeModal,
+
+  start(d) {
+    if (S.active) { view = 'train'; render(); return toast('Er loopt al een training'); }
+    const w = S.workouts.find(x => x.id === d.id);
+    S.active = {
+      id: uid(), workoutId: w?.id || null, name: w?.name || 'Vrije training', startedAt: Date.now(),
+      entries: (w?.items || []).filter(it => ex(it.exerciseId)).map(it => newEntry(it.exerciseId, num(it.sets), it.reps)),
+    };
+    save(); view = 'train'; ui.workoutId = null; render(); scrollTo(0, 0);
+  },
+  toggleSet(d) {
+    const s = S.active.entries[+d.e].sets[+d.s];
+    if (!s.done) {
+      if (s.w === '' && s.pw !== '') s.w = s.pw;
+      if (s.r === '' && num(s.pr) != null) s.r = String(num(s.pr));
+      if (!(num(s.r) > 0)) return toast('Vul eerst het aantal herhalingen in');
+      s.done = true; startRest();
+    } else s.done = false;
+    save(); render();
+  },
+  addSet(d) {
+    const en = S.active.entries[+d.e], p = en.sets[en.sets.length - 1];
+    en.sets.push({ w: '', r: '', pw: p ? (p.w || p.pw) : '', pr: p ? (p.r || p.pr) : '', done: false });
+    save(); render();
+  },
+  delSet(d) { S.active.entries[+d.e].sets.pop(); save(); render(); },
+  entryMenu(d) {
+    const i = +d.e, en = S.active.entries[i];
+    openModal(modalHead(exName(en.exerciseId, en.name)) + `
+      ${i > 0 ? `<button class="block" data-act="moveEntry" data-e="${i}" data-d="-1">${ic('up')}Naar boven</button>` : ''}
+      ${i < S.active.entries.length - 1 ? `<button class="block" data-act="moveEntry" data-e="${i}" data-d="1">${ic('down')}Naar beneden</button>` : ''}
+      <button class="block danger" data-act="delEntry" data-e="${i}">Uit deze training halen</button>`);
+  },
+  moveEntry(d) {
+    const a = S.active.entries, i = +d.e, j = i + +d.d;
+    [a[i], a[j]] = [a[j], a[i]]; save(); closeModal(); render();
+  },
+  delEntry(d) { S.active.entries.splice(+d.e, 1); save(); closeModal(); render(); },
+  addToSession() {
+    openPicker('Oefening toevoegen', S.active.entries.map(e => e.exerciseId), ids => {
+      ids.forEach(id => S.active.entries.push(newEntry(id))); save(); render();
+    });
+  },
+  async finish() {
+    const a = S.active;
+    const entries = a.entries.map(en => ({
+      exerciseId: en.exerciseId, name: exName(en.exerciseId, en.name),
+      sets: en.sets.filter(s => s.done).map(s => ({ w: num(s.w) || 0, r: num(s.r) || 0 })),
+    })).filter(en => en.sets.length);
+    const open = a.entries.reduce((t, en) => t + en.sets.filter(s => !s.done).length, 0);
+    if (!entries.length) {
+      if (await ask('Je hebt nog geen sets afgevinkt. Training weggooien?')) { S.active = null; restEnd = 0; save(); render(); }
+      return;
+    }
+    if (open && !await ask(`${open} set${open === 1 ? ' is' : 's zijn'} niet afgevinkt en ${open === 1 ? 'wordt' : 'worden'} niet opgeslagen. Toch afronden?`)) return;
+    const session = { id: a.id, workoutId: a.workoutId, name: a.name, date: localISO(a.startedAt), startedAt: a.startedAt, finishedAt: Date.now(), entries };
+    S.sessions.push(session);
+    S.sessions.sort((x, y) => x.startedAt - y.startedAt);
+    S.active = null; restEnd = 0;
+    save(); render(); scrollTo(0, 0);
+    toast(`Lekker bezig! ${sessionSets(session)} sets · ${kg(sessionVolume(session))}`);
+  },
+  async cancelSession() {
+    if (!await ask('Training annuleren? Wat je hebt ingevuld wordt niet opgeslagen.', 'Ja, training stoppen')) return;
+    S.active = null; restEnd = 0; save(); render();
+  },
+  session(d) {
+    const s = S.sessions.find(x => x.id === d.id);
+    const mins = Math.round((s.finishedAt - s.startedAt) / 60000);
+    openModal(modalHead(s.name) + `<div class="muted small">${longDate(s.date)} · ${mins} min · ${kg(sessionVolume(s))}</div>` +
+      s.entries.map(e => `<div class="card" style="background:var(--card2);margin-top:10px"><div style="font-weight:600">${esc(exName(e.exerciseId, e.name))}</div>
+        <div class="muted small">${e.sets.map(setTxt).join(', ')}</div></div>`).join('') +
+      `<button class="block danger" data-act="delSession" data-id="${s.id}">Uit geschiedenis verwijderen</button>`);
+  },
+  async delSession(d) {
+    if (!await ask('Deze training uit je geschiedenis verwijderen?')) return;
+    S.sessions = S.sessions.filter(x => x.id !== d.id); save(); closeModal(); render();
+  },
+  restAdd() { restEnd = Math.max(restEnd, Date.now()) + 15000; restTotal += 15; tick(); },
+  restStop() { restEnd = 0; tick(); },
+
+  newWorkout() {
+    askName('Nieuwe training', '', name => {
+      const w = { id: uid(), name, items: [] };
+      S.workouts.push(w); save(); ui.workoutId = w.id; render();
+    });
+  },
+  editWorkout(d) { ui.workoutId = d.id; render(); scrollTo(0, 0); },
+  backWorkouts() { ui.workoutId = null; render(); },
+  moveItem(d) {
+    const w = S.workouts.find(x => x.id === ui.workoutId), i = +d.i, j = i + +d.d;
+    if (j < 0 || j >= w.items.length) return;
+    [w.items[i], w.items[j]] = [w.items[j], w.items[i]]; save(); render();
+  },
+  delItem(d) { const w = S.workouts.find(x => x.id === ui.workoutId); w.items.splice(+d.i, 1); save(); render(); },
+  addToWorkout() {
+    const w = S.workouts.find(x => x.id === ui.workoutId);
+    openPicker('Oefeningen toevoegen', w.items.map(it => it.exerciseId), ids => {
+      ids.forEach(id => w.items.push({ exerciseId: id, sets: 3, reps: '8-10' })); save(); render();
+    });
+  },
+  async delWorkout() {
+    const w = S.workouts.find(x => x.id === ui.workoutId);
+    if (!await ask(`Training "${w.name}" verwijderen? Je gelogde trainingen blijven bewaard.`)) return;
+    S.workouts = S.workouts.filter(x => x.id !== w.id); ui.workoutId = null; save(); render();
+  },
+
+  newExercise() { exerciseForm(null); },
+  demo(d) { showDemo(ex(d.id)); },
+  editExercise(d) { exerciseForm(d.id); },
+  manageGroups: groupsModal,
+  addGroup() {
+    const inp = document.getElementById('newGroup'), name = inp.value.trim();
+    if (!name) return toast('Vul een naam in');
+    S.groups.push({ id: uid(), name }); save(); groupsModal(); render();
+  },
+  delGroup(d) {
+    const g = grp(d.id), n = S.exercises.filter(e => e.groupId === d.id).length;
+    if (n) return toast(`Er ${n === 1 ? 'hoort nog 1 oefening' : 'horen nog ' + n + ' oefeningen'} bij ${g.name}`);
+    S.groups = S.groups.filter(x => x.id !== d.id); save(); groupsModal(); render();
+  },
+  moveGroup(d) {
+    const i = S.groups.findIndex(g => g.id === d.id);
+    if (i <= 0) return;
+    [S.groups[i - 1], S.groups[i]] = [S.groups[i], S.groups[i - 1]]; save(); groupsModal(); render();
+  },
+
+  pickGroup(d) { picker.g = d.id; pickList(); },
+  exGroup(d) { ui.exGroup = d.id; render(); },
+  pickToggle(d) { picker.sel.has(d.id) ? picker.sel.delete(d.id) : picker.sel.add(d.id); pickList(); },
+  pickNew() {
+    const p = picker;
+    if (p.g) ui.lastGroup = p.g;
+    exerciseForm(null, id => { picker = p; picker.sel.add(id); showPicker(); });
+  },
+  pickDone() {
+    if (!picker.sel.size) return toast('Tik op een of meer oefeningen');
+    const ids = [...picker.sel], cb = picker.onDone;
+    closeModal(); cb(ids);
+  },
+
+  metric(d) { ui.metric = d.m; render(); },
+
+  async export() {
+    const json = JSON.stringify({ ...S, exportedAt: new Date().toISOString() }, null, 1);
+    const name = 'gymlog-backup-' + localISO(Date.now()) + '.json';
+    const file = new File([json], name, { type: 'application/json' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file], title: 'Gym Log back-up' }); return; }
+      catch (e) { if (e.name === 'AbortError') return; }
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(file); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    toast('Back-up gedownload');
+  },
+  import() { document.getElementById('importFile').click(); },
+  async reset() {
+    if (!await ask('Echt ALLES wissen? Oefeningen, trainingen en je hele geschiedenis. Dit kan niet ongedaan worden.')) return;
+    if (!await ask('Laatste kans: heb je een back-up? Alles wordt nu gewist.')) return;
+    S = fresh(); restEnd = 0; save(); render(); toast('Alles is gewist');
+  },
+};
+
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]');
+  if (!el || !A[el.dataset.act]) return;
+  e.preventDefault();
+  A[el.dataset.act](el.dataset, el);
+});
+
+// invoer tijdens de training: direct bewaren, zonder opnieuw te tekenen (dan blijft het toetsenbord open)
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (t.dataset.f && S.active) {
+    const s = S.active.entries[+t.dataset.e]?.sets[+t.dataset.s];
+    if (s) { s[t.dataset.f] = t.value; save(); }
+  }
+});
+document.addEventListener('change', e => {
+  const t = e.target, d = t.dataset;
+  if ('wname' in d) {
+    const w = S.workouts.find(x => x.id === ui.workoutId);
+    if (w && t.value.trim()) { w.name = t.value.trim(); save(); }
+  } else if (d.wi != null) {
+    const w = S.workouts.find(x => x.id === ui.workoutId);
+    const it = w?.items[+d.wi];
+    if (it) { it[d.wf] = d.wf === 'sets' ? (Math.max(1, Math.round(num(t.value) || 1))) : t.value.trim(); save(); }
+  } else if (d.gname) {
+    const g = grp(d.gname);
+    if (g && t.value.trim()) { g.name = t.value.trim(); save(); render(); }
+  } else if (d.setting === 'rest') {
+    S.settings.rest = Math.max(10, Math.round(num(t.value) || 90)); t.value = S.settings.rest; save();
+  } else if ('pickEx' in d) {
+    ui.progressEx = t.value; render();
+  }
+});
+
+document.getElementById('importFile').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  try {
+    const d = JSON.parse(await f.text());
+    if (!Array.isArray(d.exercises) || !Array.isArray(d.groups) || !Array.isArray(d.sessions)) throw new Error('geen back-up');
+    const msg = `Back-up met ${d.exercises.length} oefeningen, ${(d.workouts || []).length} eigen trainingen en ${d.sessions.length} gelogde trainingen.\n\nDit vervangt alles wat nu op dit apparaat staat. Doorgaan?`;
+    if (!await ask(msg)) return;
+    delete d.exportedAt;
+    S = normalize(d); save(); render(); toast('Back-up teruggezet');
+  } catch (err) { toast('Dit bestand is geen geldige back-up'); }
+});
+
+/* ---------- timers ---------- */
+let restEnd = 0, restTotal = 90;
+function startRest() { restTotal = S.settings.rest; restEnd = Date.now() + restTotal * 1000; tick(); }
+function tick() {
+  const box = document.getElementById('rest');
+  const left = Math.ceil((restEnd - Date.now()) / 1000);
+  if (restEnd && left > 0) {
+    box.hidden = false;
+    box.querySelector('.t').textContent = mmss(left);
+    box.querySelector('.prog').style.width = Math.min(100, left / restTotal * 100) + '%';
+  } else {
+    if (restEnd) { restEnd = 0; if (navigator.vibrate) navigator.vibrate([200, 100, 200]); toast('Rust voorbij, volgende set!'); }
+    box.hidden = true;
+  }
+  document.body.classList.toggle('resting', !box.hidden);
+  const el = document.getElementById('elapsed');
+  if (el && S.active) el.textContent = mmss(Math.floor((Date.now() - S.active.startedAt) / 1000));
+}
+setInterval(tick, 500);
+
+render();
+
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
